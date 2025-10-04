@@ -42,6 +42,12 @@
         let swipeResults = [];
         const cards = document.querySelectorAll('.topic-card');
         const totalCards = cards.length;
+        
+        // Drag variables
+        let isDragging = false;
+        let startX = 0;
+        let currentX = 0;
+        let cardBeingDragged = null;
 
         function updateProgress() {
             const progress = (currentCard / totalCards) * 100;
@@ -62,9 +68,85 @@
             });
         }
 
-        function swipeCard(rating) {
+        // Mouse events
+        function handleMouseDown(e) {
             if (currentCard >= totalCards) return;
+            
+            isDragging = true;
+            cardBeingDragged = cards[currentCard];
+            startX = e.clientX;
+            
+            cardBeingDragged.style.cursor = 'grabbing';
+            cardBeingDragged.style.transition = 'none';
+        }
 
+        function handleMouseMove(e) {
+            if (!isDragging || !cardBeingDragged) return;
+            
+            currentX = e.clientX;
+            const deltaX = currentX - startX;
+            
+            // Move card with mouse
+            cardBeingDragged.style.transform = `translateX(${deltaX}px) rotate(${deltaX * 0.1}deg)`;
+            
+            // Update opacity based on drag distance
+            const opacity = Math.max(0.3, 1 - Math.abs(deltaX) / 300);
+            cardBeingDragged.style.opacity = opacity;
+            
+            // Show hints based on direction
+            const weakHint = cardBeingDragged.querySelector('.weak');
+            const familiarHint = cardBeingDragged.querySelector('.familiar');
+            
+            if (deltaX < -50) {
+                weakHint.style.opacity = Math.min(1, Math.abs(deltaX) / 100);
+                familiarHint.style.opacity = 0.3;
+            } else if (deltaX > 50) {
+                familiarHint.style.opacity = Math.min(1, deltaX / 100);
+                weakHint.style.opacity = 0.3;
+            } else {
+                weakHint.style.opacity = 0.6;
+                familiarHint.style.opacity = 0.6;
+            }
+        }
+
+        function handleMouseUp(e) {
+            if (!isDragging || !cardBeingDragged) return;
+            
+            const deltaX = currentX - startX;
+            const threshold = 100; // Minimum drag distance to trigger swipe
+            
+            if (Math.abs(deltaX) > threshold) {
+                // Determine swipe direction
+                const rating = deltaX < 0 ? 'weak' : 'familiar';
+                
+                // Animate card off screen
+                const exitX = deltaX < 0 ? -400 : 400;
+                cardBeingDragged.style.transition = 'transform 0.3s ease, opacity 0.3s ease';
+                cardBeingDragged.style.transform = `translateX(${exitX}px) rotate(${exitX * 0.1}deg)`;
+                cardBeingDragged.style.opacity = 0;
+                
+                // Process the swipe
+                processSwipe(rating);
+            } else {
+                // Snap back to center if not dragged far enough
+                cardBeingDragged.style.transition = 'transform 0.3s ease, opacity 0.3s ease';
+                cardBeingDragged.style.transform = 'translateX(0px) rotate(0deg)';
+                cardBeingDragged.style.opacity = 1;
+                
+                // Reset hints
+                const weakHint = cardBeingDragged.querySelector('.weak');
+                const familiarHint = cardBeingDragged.querySelector('.familiar');
+                weakHint.style.opacity = 0.6;
+                familiarHint.style.opacity = 0.6;
+            }
+            
+            // Reset drag state
+            isDragging = false;
+            cardBeingDragged.style.cursor = 'grab';
+            cardBeingDragged = null;
+        }
+
+        function processSwipe(rating) {
             const card = cards[currentCard];
             const topic = card.dataset.topic;
             
@@ -73,13 +155,12 @@
                 rating: rating
             });
 
-            // Animate current card out
-            card.style.transform = rating === 'weak' ? 'translateX(-100%)' : 'translateX(100%)';
-            card.style.opacity = '0';
-
             setTimeout(() => {
                 // Hide the swiped card
                 card.classList.add('hidden');
+                card.style.transform = '';
+                card.style.opacity = '';
+                card.style.transition = '';
                 
                 currentCard++;
                 updateProgress();
@@ -98,7 +179,7 @@
                         body: JSON.stringify(swipeResults)
                     });
                 } else {
-                    // Just promote the next card to current
+                    // Promote next card
                     if (currentCard < totalCards) {
                         cards[currentCard].classList.remove('next');
                         cards[currentCard].classList.add('current');
@@ -112,6 +193,41 @@
                 }
             }, 300);
         }
+
+        // Button fallback (keep for accessibility)
+        function swipeCard(rating) {
+            if (currentCard >= totalCards) return;
+
+            const card = cards[currentCard];
+            
+            // Animate with button
+            card.style.transition = 'transform 0.3s ease, opacity 0.3s ease';
+            card.style.transform = rating === 'weak' ? 'translateX(-400px)' : 'translateX(400px)';
+            card.style.opacity = '0';
+
+            processSwipe(rating);
+        }
+
+        // Add event listeners
+        document.addEventListener('mousedown', handleMouseDown);
+        document.addEventListener('mousemove', handleMouseMove);
+        document.addEventListener('mouseup', handleMouseUp);
+
+        // Touch events for mobile
+        document.addEventListener('touchstart', (e) => {
+            e.clientX = e.touches[0].clientX;
+            handleMouseDown(e);
+        });
+
+        document.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            e.clientX = e.touches[0].clientX;
+            handleMouseMove(e);
+        });
+
+        document.addEventListener('touchend', (e) => {
+            handleMouseUp(e);
+        });
 
         // Initialize
         showCards();
