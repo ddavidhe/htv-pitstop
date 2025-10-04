@@ -1,8 +1,20 @@
 <!DOCTYPE html>
 <html>
+<head>
+    <title>PitStop - Extraction Results</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
 <body>
-  <h1>Extracted Data</h1>
-  <pre>{{ output }}</pre>
-  <a href="/">Upload another</a>
+    <div class="container">
+        <h1>Extracted Data</h1>
+        <div class="json-output">
+            <pre>{{ output }}</pre>
+        </div>
+        
+        <div class="action-buttons">
+            <a href="/" class="secondary-btn">Upload Another</a>
+            <a href="{{ url_for('sync_calendar') }}" class="upload-btn">Sync to Google Calendar</a>
+        </div>
+    </div>
 </body>
 </html>
