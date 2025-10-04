@@ -74,6 +74,8 @@ h1 {
     font-weight: 500;
     cursor: pointer;
     transition: transform 0.2s ease, box-shadow 0.2s ease;
+    text-decoration: none;
+    display: inline-block;
 }
 
 .upload-btn:hover {
@@ -93,6 +95,7 @@ h1 {
     transform: scale(1.02);
 }
 
+/* - JSON - */
 
 .json-output {
     background: #f8f9fa;
@@ -141,7 +144,36 @@ h1 {
     text-decoration: none;
 }
 
-.upload-btn {
-    text-decoration: none;
-    display: inline-block;
+/* - Success Page -*/
+.success-icon {
+    font-size: 64px;
+    color: #28a745;
+    margin-bottom: 20px;
+    animation: bounce 0.6s ease-in-out;
+}
+
+.success-title {
+    color: #28a745;
+    font-size: 2em;
+    margin-bottom: 15px;
+    font-weight: 400;
+}
+
+.success-message {
+    font-size: 18px;
+    color: #6c757d;
+    margin-bottom: 30px;
+    line-height: 1.6;
+}
+
+@keyframes bounce {
+    0%, 20%, 60%, 100% {
+        transform: translateY(0);
+    }
+    40% {
+        transform: translateY(-10px);
+    }
+    80% {
+        transform: translateY(-5px);
+    }
 }
