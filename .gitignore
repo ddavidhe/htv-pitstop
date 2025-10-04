@@ -1,2 +1,4 @@
 .venv
 .env
+uploads
+credentials.json
