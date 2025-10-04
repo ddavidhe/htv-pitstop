@@ -33,6 +33,7 @@ def extract_text(pdf_path):
             text.append(page.get_text())
     return "\n".join(text)
 
+# the real route that uses openai lol
 # @app.route("/", methods=["GET", "POST"])
 # def index():
 #     if request.method == "POST":
@@ -43,10 +44,13 @@ def extract_text(pdf_path):
 #         file.save(save_path)
 
 #         pdf_text = extract_text(save_path)
-
+    
 #         prompt = (
-#             "Extract all assignment due dates and list weekly topics clearly "
-#             "as JSON with fields: assignments.\n\n"
+#             "Extract the course name, course code, all assignment names with due dates, "
+#             "and weekly topics clearly as JSON with fields: course_name, course_code, assignments, weekly_topics.\n\n"
+#             "for assignments, ensure that the due_date field is in form of Sep 29 or Nov 25 where month is the first 3 letters of the month.\n\n"
+#             "for weekly topics, keep the ranges.\n\n"
+#             "you do NOT need to include the final exam or the midterm if there is nore date listed.\n\n"
 #             f"{pdf_text}"
 #         )
 
@@ -62,6 +66,7 @@ def extract_text(pdf_path):
 #         return render_template("result.html", output=result)
 #     return render_template("index.html")
 
+# PURELY FOR THE SAMPLE, USES THE JSON THAT ALREADY EXISTS TO COP OUT OF OPENAI COSTS
 @app.route("/", methods=["GET", "POST"])
 def index():
     if request.method == "POST":
@@ -71,7 +76,7 @@ def index():
         save_path = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
         file.save(save_path)
 
-        with open('sample.json', "r") as f:
+        with open('sample2.json', "r") as f:
             result = f.read()
         session["last_pdf_json"] = result # store that in the session
         return render_template("result.html", output=result)
@@ -179,16 +184,26 @@ def sync_calendar():
 
 @app.route("/swipe_topics")
 def swipe_topics():
-    # sample topics for now:
-    sample_topics = [
-        "Introduction to Python",
-        "Data Structures",
-        "Algorithms",
-        "Katarina + Garen Ao3",
-        "Web Development Basics",
-    ]
+    pdf_json = session.get("last_pdf_json")
+    
+    if pdf_json:
+        output_json = json.loads(pdf_json)
+        topics = []
 
-    return render_template("swipe.html", topics=sample_topics)
+        for week_date in output_json.get("weekly_topics", []):
+            if isinstance(week_date, dict):
+                topic = week_date.get("topics", "No Topic")
+                week_topics = [topic.strip() for topic in topic.split(",")]
+                topics.extend(week_topics)
+            else:
+                topics.append(str(week_date))
+
+        topics = [topic for topic in topics if topic] # remove empty
+        topics = list(set(topics))  # Remove duplicate topics
+    else:
+        topics = ["Topic 1", "Topic 2", "Topic 3"]  # Fallback topics
+
+    return render_template("swipe.html", topics=topics)
 
 @app.route("/swipe_result", methods=["POST"])
 def swipe_result():
@@ -196,6 +211,11 @@ def swipe_result():
     print("Swipe result: ", swipe_data)
     # TODO: sqlite
     return {"status": "success"}
+
+
+@app.route("/time_block")
+def time_block():
+    return render_template("timeblock.html")
 
 
 if __name__ == "__main__":
