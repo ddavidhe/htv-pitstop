@@ -146,6 +146,26 @@ def sync_calendar():
     print(f"Inserted {assignment_count} assignments into calendar.")
     return render_template("success.html", count=assignment_count)
 
+@app.route("/swipe_topics")
+def swipe_topics():
+    # sample topics for now:
+    sample_topics = [
+        "Introduction to Python",
+        "Data Structures",
+        "Algorithms",
+        "Katarina + Garen Ao3",
+        "Web Development Basics",
+    ]
+
+    return render_template("swipe.html", topics=sample_topics)
+
+@app.route("/swipe_result", methods=["POST"])
+def swipe_result():
+    swipe_data = request.get_json()
+    print("Swipe result: ", swipe_data)
+    # TODO: sqlite
+    return {"status": "success"}
+
 
 if __name__ == "__main__":
     os.makedirs("uploads", exist_ok=True)

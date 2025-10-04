@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>PitStop - Swipe Topics</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='swipe.css') }}">
+</head>
+<body>
+    <div class="container swipe-container">
+        <h1>Rate Your Knowledge</h1>
+        <p class="swipe-instructions">Swipe left if you're weak at this topic, right if you're familiar</p>
+        
+        <div class="card-stack" id="cardStack">
+            {% for topic in topics %}
+            <div class="topic-card" data-topic="{{ topic }}">
+                <h2>{{ topic }}</h2>
+                <div class="swipe-hints">
+                    <span class="weak">😰 Weak</span>
+                    <span class="familiar">😎 Familiar</span>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        
+        <div class="swipe-buttons">
+            <button class="swipe-btn weak-btn" onclick="swipeCard('weak')">👈 Weak</button>
+            <button class="swipe-btn familiar-btn" onclick="swipeCard('familiar')">👉 Familiar</button>
+        </div>
+        
+        <div class="progress-bar">
+            <div class="progress" id="progress"></div>
+        </div>
+        
+        <div id="completed" class="completed" style="display: none;">
+            <h2>Great! We've got your preferences</h2>
+            <a href="/" class="upload-btn">Back to Home</a>
+        </div>
+    </div>
+
+    <script>
+        let currentCard = 0;
+        let swipeResults = [];
+        const cards = document.querySelectorAll('.topic-card');
+        const totalCards = cards.length;
+
+        function updateProgress() {
+            const progress = (currentCard / totalCards) * 100;
+            document.getElementById('progress').style.width = progress + '%';
+        }
+
+        function showCards() {
+            cards.forEach((card, index) => {
+                card.classList.remove('current', 'next', 'hidden');
+
+                if (index == currentCard) {
+                    card.classList.add('current');
+                } else if (index == 1 + currentCard) {
+                    card.classList.add('next');
+                } else {
+                    card.classList.add('hidden');
+                }
+            });
+        }
+
+        function swipeCard(rating) {
+            if (currentCard >= totalCards) return;
+
+            const card = cards[currentCard];
+            const topic = card.dataset.topic;
+            
+            swipeResults.push({
+                topic: topic,
+                rating: rating
+            });
+
+            // Animate current card out
+            card.style.transform = rating === 'weak' ? 'translateX(-100%)' : 'translateX(100%)';
+            card.style.opacity = '0';
+
+            setTimeout(() => {
+                // Hide the swiped card
+                card.classList.add('hidden');
+                
+                currentCard++;
+                updateProgress();
+
+                if (currentCard >= totalCards) {
+                    // All cards swiped
+                    document.getElementById('completed').style.display = 'block';
+                    document.querySelector('.swipe-buttons').style.display = 'none';
+                    
+                    // Send results to backend
+                    fetch('/swipe_result', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(swipeResults)
+                    });
+                } else {
+                    // Just promote the next card to current
+                    if (currentCard < totalCards) {
+                        cards[currentCard].classList.remove('next');
+                        cards[currentCard].classList.add('current');
+                    }
+
+                    setTimeout(() => {
+                        if (currentCard + 1 < totalCards) {
+                            cards[currentCard + 1].classList.remove('hidden');
+                            cards[currentCard + 1].classList.add('next');
+                    }}, 100);
+                }
+            }, 300);
+        }
+
+        // Initialize
+        showCards();
+        updateProgress();
+    </script>
+</body>
+</html>

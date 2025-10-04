@@ -1,0 +1,113 @@
+/* Swipe-specific styles */
+.swipe-container {
+    max-width: 400px;
+}
+
+.swipe-instructions {
+    color: #666;
+    margin-bottom: 30px;
+    font-size: 16px;
+}
+
+.card-stack {
+    position: relative;
+    height: 300px;
+    margin-bottom: 30px;
+}
+
+.topic-card {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border-radius: 15px;
+    padding: 40px 20px;
+    text-align: center;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+    transition: transform 0.3s ease, opacity 0.3s ease, z-index 0.3s ease;
+    cursor: grab;
+}
+
+.topic-card.current {
+    z-index: 100;
+    transform: translateY(0px) scale(1);
+}
+
+.topic-card.next {
+    z-index: 50;
+    transform: translateY(10px) scale(0.95);
+    opacity: 0.8;
+}
+
+.topic-card.hidden {
+    display: none;
+}
+
+.topic-card h2 {
+    color: #333;
+    margin-bottom: 20px;
+    font-size: 1.8em;
+}
+
+.swipe-hints {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 20px;
+    opacity: 0.6;
+}
+
+.swipe-buttons {
+    display: flex;
+    gap: 20px;
+    justify-content: center;
+    margin-bottom: 20px;
+}
+
+.swipe-btn {
+    padding: 15px 30px;
+    border: none;
+    border-radius: 50px;
+    font-size: 16px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: transform 0.2s ease;
+}
+
+.weak-btn {
+    background: #dc3545;
+    color: white;
+}
+
+.familiar-btn {
+    background: #28a745;
+    color: white;
+}
+
+.swipe-btn:hover {
+    transform: scale(1.05);
+}
+
+.progress-bar {
+    width: 100%;
+    height: 8px;
+    background: #e9ecef;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.progress {
+    height: 100%;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    width: 0%;
+    transition: width 0.3s ease;
+}
+
+.completed {
+    text-align: center;
+    padding: 20px;
+}
+
+.secondary-action {
+    margin-top: 20px;
+}
