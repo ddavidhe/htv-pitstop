@@ -8,7 +8,7 @@
 <body>
     <div class="container swipe-container">
         <h1>Rate Your Knowledge</h1>
-        <p class="swipe-instructions">Swipe left if you're weak at this topic, right if you're familiar</p>
+        <p class="swipe-instructions">Drag left (weak), right (familiar), or up (so-so)</p>
         
         <div class="card-stack" id="cardStack">
             {% for topic in topics %}
@@ -16,14 +16,19 @@
                 <h2>{{ topic }}</h2>
                 <div class="swipe-hints">
                     <span class="weak">😰 Weak</span>
+                    <span class="soso">😐 So-So</span>
                     <span class="familiar">😎 Familiar</span>
                 </div>
             </div>
             {% endfor %}
         </div>
         
+        <!-- Background overlay for color feedback -->
+        <div id="swipeOverlay" class="swipe-overlay"></div>
+        
         <div class="swipe-buttons">
             <button class="swipe-btn weak-btn" onclick="swipeCard('weak')">👈 Weak</button>
+            <button class="swipe-btn soso-btn" onclick="swipeCard('soso')">👆 So-So</button>
             <button class="swipe-btn familiar-btn" onclick="swipeCard('familiar')">👉 Familiar</button>
         </div>
         
@@ -42,11 +47,14 @@
         let swipeResults = [];
         const cards = document.querySelectorAll('.topic-card');
         const totalCards = cards.length;
+        const swipeOverlay = document.getElementById('swipeOverlay');
         
         // Drag variables
         let isDragging = false;
         let startX = 0;
+        let startY = 0;
         let currentX = 0;
+        let currentY = 0;
         let cardBeingDragged = null;
 
         function updateProgress() {
@@ -68,6 +76,28 @@
             });
         }
 
+        function updateBackgroundColor(deltaX, deltaY) {
+            const threshold = 50;
+            let color = 'rgba(255, 255, 255, 0)'; // Default transparent
+            let opacity = 0;
+            
+            if (deltaY < -threshold && Math.abs(deltaX) < Math.abs(deltaY)) {
+                // Dragging UP (so-so) - Yellow
+                opacity = Math.min(0.3, Math.abs(deltaY) / 200);
+                color = `rgba(255, 193, 7, ${opacity})`; // Yellow
+            } else if (deltaX < -threshold && Math.abs(deltaX) > Math.abs(deltaY)) {
+                // Dragging LEFT (weak) - Red
+                opacity = Math.min(0.3, Math.abs(deltaX) / 200);
+                color = `rgba(220, 53, 69, ${opacity})`; // Red
+            } else if (deltaX > threshold && Math.abs(deltaX) > Math.abs(deltaY)) {
+                // Dragging RIGHT (familiar) - Green
+                opacity = Math.min(0.3, deltaX / 200);
+                color = `rgba(40, 167, 69, ${opacity})`; // Green
+            }
+            
+            swipeOverlay.style.backgroundColor = color;
+        }
+
         // Mouse events
         function handleMouseDown(e) {
             if (currentCard >= totalCards) return;
@@ -75,6 +105,7 @@
             isDragging = true;
             cardBeingDragged = cards[currentCard];
             startX = e.clientX;
+            startY = e.clientY;
             
             cardBeingDragged.style.cursor = 'grabbing';
             cardBeingDragged.style.transition = 'none';
@@ -84,45 +115,81 @@
             if (!isDragging || !cardBeingDragged) return;
             
             currentX = e.clientX;
+            currentY = e.clientY;
             const deltaX = currentX - startX;
+            const deltaY = currentY - startY;
             
-            // Move card with mouse
-            cardBeingDragged.style.transform = `translateX(${deltaX}px) rotate(${deltaX * 0.1}deg)`;
+            // Update background color based on drag direction
+            updateBackgroundColor(deltaX, deltaY);
             
-            // Update opacity based on drag distance
-            const opacity = Math.max(0.3, 1 - Math.abs(deltaX) / 300);
+            // Move card with mouse (both X and Y)
+            cardBeingDragged.style.transform = `translateX(${deltaX}px) translateY(${deltaY}px) rotate(${deltaX * 0.1}deg)`;
+            
+            // Update opacity based on drag distance (use total distance)
+            const totalDistance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+            const opacity = Math.max(0.3, 1 - totalDistance / 300);
             cardBeingDragged.style.opacity = opacity;
             
             // Show hints based on direction
             const weakHint = cardBeingDragged.querySelector('.weak');
             const familiarHint = cardBeingDragged.querySelector('.familiar');
+            const sosoHint = cardBeingDragged.querySelector('.soso');
             
-            if (deltaX < -50) {
+            if (deltaY < -50 && Math.abs(deltaX) < Math.abs(deltaY)) {
+                // Dragging UP (so-so)
+                sosoHint.style.opacity = Math.min(1, Math.abs(deltaY) / 100);
+                weakHint.style.opacity = 0.3;
+                familiarHint.style.opacity = 0.3;
+            } else if (deltaX < -50 && Math.abs(deltaX) > Math.abs(deltaY)) {
+                // Dragging LEFT (weak)
                 weakHint.style.opacity = Math.min(1, Math.abs(deltaX) / 100);
                 familiarHint.style.opacity = 0.3;
-            } else if (deltaX > 50) {
+                sosoHint.style.opacity = 0.3;
+            } else if (deltaX > 50 && Math.abs(deltaX) > Math.abs(deltaY)) {
+                // Dragging RIGHT (familiar)
                 familiarHint.style.opacity = Math.min(1, deltaX / 100);
                 weakHint.style.opacity = 0.3;
+                sosoHint.style.opacity = 0.3;
             } else {
+                // No clear direction
                 weakHint.style.opacity = 0.6;
                 familiarHint.style.opacity = 0.6;
+                sosoHint.style.opacity = 0.6;
             }
         }
 
         function handleMouseUp(e) {
             if (!isDragging || !cardBeingDragged) return;
             
+            // Reset background color
+            swipeOverlay.style.backgroundColor = 'rgba(255, 255, 255, 0)';
+            
             const deltaX = currentX - startX;
+            const deltaY = currentY - startY;
             const threshold = 100; // Minimum drag distance to trigger swipe
             
-            if (Math.abs(deltaX) > threshold) {
-                // Determine swipe direction
-                const rating = deltaX < 0 ? 'weak' : 'familiar';
-                
+            let rating = null;
+            let exitTransform = '';
+            
+            // Determine swipe direction
+            if (deltaY < -threshold && Math.abs(deltaY) > Math.abs(deltaX)) {
+                // Swiped UP (so-so)
+                rating = 'soso';
+                exitTransform = 'translateY(-400px)';
+            } else if (deltaX < -threshold && Math.abs(deltaX) > Math.abs(deltaY)) {
+                // Swiped LEFT (weak)
+                rating = 'weak';
+                exitTransform = `translateX(-400px) rotate(-20deg)`;
+            } else if (deltaX > threshold && Math.abs(deltaX) > Math.abs(deltaY)) {
+                // Swiped RIGHT (familiar)
+                rating = 'familiar';
+                exitTransform = `translateX(400px) rotate(20deg)`;
+            }
+            
+            if (rating) {
                 // Animate card off screen
-                const exitX = deltaX < 0 ? -400 : 400;
                 cardBeingDragged.style.transition = 'transform 0.3s ease, opacity 0.3s ease';
-                cardBeingDragged.style.transform = `translateX(${exitX}px) rotate(${exitX * 0.1}deg)`;
+                cardBeingDragged.style.transform = exitTransform;
                 cardBeingDragged.style.opacity = 0;
                 
                 // Process the swipe
@@ -130,14 +197,16 @@
             } else {
                 // Snap back to center if not dragged far enough
                 cardBeingDragged.style.transition = 'transform 0.3s ease, opacity 0.3s ease';
-                cardBeingDragged.style.transform = 'translateX(0px) rotate(0deg)';
+                cardBeingDragged.style.transform = 'translateX(0px) translateY(0px) rotate(0deg)';
                 cardBeingDragged.style.opacity = 1;
                 
                 // Reset hints
                 const weakHint = cardBeingDragged.querySelector('.weak');
                 const familiarHint = cardBeingDragged.querySelector('.familiar');
+                const sosoHint = cardBeingDragged.querySelector('.soso');
                 weakHint.style.opacity = 0.6;
                 familiarHint.style.opacity = 0.6;
+                sosoHint.style.opacity = 0.6;
             }
             
             // Reset drag state
@@ -191,7 +260,7 @@
                             cards[currentCard + 1].classList.add('next');
                     }}, 100);
                 }
-            }, 300);
+            }, 50);
         }
 
         // Button fallback (keep for accessibility)
@@ -200,9 +269,18 @@
 
             const card = cards[currentCard];
             
-            // Animate with button
+            // Animate with button based on rating
+            let exitTransform = '';
+            if (rating === 'weak') {
+                exitTransform = 'translateX(-400px) rotate(-20deg)';
+            } else if (rating === 'familiar') {
+                exitTransform = 'translateX(400px) rotate(20deg)';
+            } else if (rating === 'soso') {
+                exitTransform = 'translateY(-400px)';
+            }
+
             card.style.transition = 'transform 0.3s ease, opacity 0.3s ease';
-            card.style.transform = rating === 'weak' ? 'translateX(-400px)' : 'translateX(400px)';
+            card.style.transform = exitTransform;
             card.style.opacity = '0';
 
             processSwipe(rating);
@@ -216,12 +294,14 @@
         // Touch events for mobile
         document.addEventListener('touchstart', (e) => {
             e.clientX = e.touches[0].clientX;
+            e.clientY = e.touches[0].clientY;
             handleMouseDown(e);
         });
 
         document.addEventListener('touchmove', (e) => {
             e.preventDefault();
             e.clientX = e.touches[0].clientX;
+            e.clientY = e.touches[0].clientY;
             handleMouseMove(e);
         });
 

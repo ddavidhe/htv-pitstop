@@ -17,10 +17,11 @@
             <button type="submit" class="upload-btn">Upload & Parse</button>
         </form>
         
-        <!-- Swiping button -->
-         <div class="swiping-button">
-          <a href="{{ url_for('swipe_topics') }}" class=""secondary-btn>📚 Swipe Topics</a>
-         </div>
+        <!-- Bottom buttons -->
+        <div class="bottom-buttons">
+            <a href="{{ url_for('swipe_topics') }}" class="secondary-btn">📚 Swipe Topics</a>
+            <a href="{{ url_for('time_block') }}" class="secondary-btn">⏰ Time Block</a>
+        </div>
     </div>
 
     <script>
@@ -35,7 +36,7 @@
                 textDiv.textContent = `📄 Selected: ${fileName}`;
             }
         });
-
+        
         // Click to select file
         dropArea.addEventListener('click', () => {
             fileInput.click();
