@@ -15,7 +15,8 @@ import json
 from tools import *
 
 GOOGLE_CLIENT_SECRETS_FILE = "credentials.json"
-SCOPES = ['https://www.googleapis.com/auth/calendar.events']
+SCOPES = ['https://www.googleapis.com/auth/calendar.events',
+          'https://www.googleapis.com/auth/calendar']
 
 
 app = Flask(__name__)
@@ -130,6 +131,36 @@ def sync_calendar():
     if not pdf_json:
         return "No PDF data to sync. Please upload a PDF first."
     
+    # check to see if it exists yet
+    calendar_id = None
+    calender_name = 'PitStop Assignments'
+    try:
+        calendar_list = service.calendarList().list().execute()
+        for calendar in calendar_list.get('items', []):
+            if calendar.get('summary') == calender_name:
+                calendar_id = calendar.get('id')
+                print(f"Found existing calendar with ID: {calendar_id}")
+                break
+    except Exception as e:
+        print(f"Error fetching calendar list: {e}")
+
+    if not calendar_id:
+        # create new calendar
+        calender_body = {
+            'summary': 'PitStop Assignments',
+            'description': 'Assignments imported from PitStop',
+            'timeZone': 'America/Los_Angeles'
+        }
+
+        try:
+            created_calendar = service.calendars().insert(body=calender_body).execute()
+            calendar_id = created_calendar['id']
+            print(f"Created new calendar with ID: {calendar_id}")
+        except Exception as e:
+            print(f"Error creating calendar: {e}")
+            return "Failed to create calendar."
+    
+    # populate
     output_json = json.loads(pdf_json)
     assignment_count = 0
 
@@ -140,7 +171,7 @@ def sync_calendar():
             "start": {"date": iso_date.strftime("%Y-%m-%d")},
             "end": {"date": iso_date.strftime("%Y-%m-%d")},
         }
-        service.events().insert(calendarId='primary', body=event).execute()
+        service.events().insert(calendarId=calendar_id, body=event).execute()
         assignment_count += 1
     
     print(f"Inserted {assignment_count} assignments into calendar.")
