@@ -1,5 +1,5 @@
 # PitStop
-Gearing up for the new semester? PitStop helps you and your calendar fuel up to tackle the upcoming term properly. With Google Cloud Platform integration and OpenAI scheduling, PitStop takes your existing courses, upcoming assignments, and your personal familiarity to course concepts all into consideration when executing its task. PitStop uses all of that context to agentically block time out of your calender for non-conflicting deep work periods.
+Gearing up for the new semester? PitStop helps you and your calendar fuel up to tackle the upcoming term properly. Pitstop uses your course syllabus and other contexts to agentically block time out of your calender for non-conflicting deep work periods. With secure OAuth2.0 verification, Google Cloud Platform integration, and OpenAI processing power, PitStop takes your existing courses, upcoming assignments, and your personal familiarity to course concepts all into consideration when executing its task. 
 
 ## Try PitStop
 
