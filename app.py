@@ -1,8 +1,8 @@
 import os
-from dotenv import load_dotenv          # NEW
-load_dotenv()                            # NEW: load .env variables
+from dotenv import load_dotenv
+load_dotenv()
 
-import fitz                               # PyMuPDF
+import fitz
 from flask import Flask, request, render_template, redirect, url_for
 from openai import OpenAI
 
@@ -13,6 +13,7 @@ from flask import session
 import json
 
 from tools import *
+import time
 
 GOOGLE_CLIENT_SECRETS_FILE = "credentials.json"
 SCOPES = ['https://www.googleapis.com/auth/calendar.events',
@@ -60,9 +61,10 @@ def index():
 #         return redirect(url_for('index'))
     
 #     # For demo, use sample JSON (replace with real OpenAI call)
-#     with open('sample2.json', "r") as f:
+#     with open('cs241.json', "r") as f:
 #         result = f.read()
 #     session["last_pdf_json"] = result
+#     time.sleep(5)
     
 #     return render_template("result.html", output=result)
 
@@ -79,7 +81,7 @@ def get_results():
         "Extract the course name, course code, all assignment names with due dates, "
         "and weekly topics clearly as JSON with fields: course_name, course_code, assignments, weekly_topics.\n\n"
         "for assignments, you MUST only have 2 things per entry, name and due_date. Ensure that the due_date field is in form of Sep 29 or Nov 25 where month is the first 3 letters of the month.\n\n"
-        "for weekly topics, you MUST have 2 things per entry. range (with dates in the form of Jun 15 or Feb 11) and topics, which will be 1 string with commas to deliminate. if multiple dates exist in the range, seperate via dash like Oct 20 - Oct 25.\n\n"
+        "for weekly topics, you MUST have 2 things per entry. range (with dates in the form of Jun 15 or Feb 11) and topics, which will be 1 string with SEMICOLONs ; to deliminate. if multiple dates exist in the range, seperate via dash like Oct 20 - Oct 25.\n\n"
         "you do NOT need to include the final exam or the midterm if there is no date listed.\n\n"
         f"{pdf_text}"
     )
@@ -133,9 +135,6 @@ def oauth2callback():
     if redirect_route == 'sync_calendar':
         session.pop('redirect_after_auth', None)
         return redirect(url_for('sync_calendar'))
-    elif redirect_route == 'sync_calendar_timeblock':
-        session.pop('redirect_after_auth', None)
-        return redirect(url_for('sync_calendar_timeblock'))
     elif redirect_route == 'sync_calendar_time':
         session.pop('redirect_after_auth', None)
         return redirect(url_for('sync_calendar_time'))
@@ -218,7 +217,7 @@ def swipe_topics():
         for week_date in output_json.get("weekly_topics", []):
             if isinstance(week_date, dict):
                 topic = week_date.get("topics", "No Topic")
-                week_topics = [topic.strip() for topic in topic.split(",")]
+                week_topics = [topic.strip() for topic in topic.split(";")]
                 topics.extend(week_topics)
             else:
                 topics.append(str(week_date))
