@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>PitStop - Generating Schedule</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        .thinking-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 80vh;
+            text-align: center;
+        }
+
+        .status-text {
+            font-size: 1.2em;
+            margin-bottom: 40px;
+            color: #333;
+            font-weight: 500;
+        }
+
+        .racing-track {
+            position: relative;
+            width: 300px;
+            height: 60px;
+            background: linear-gradient(to right, #f0f0f0 0%, #f0f0f0 45%, #ffff00 50%, #f0f0f0 55%, #f0f0f0 100%);
+            border-radius: 30px;
+            margin-bottom: 30px;
+            overflow: hidden;
+        }
+
+        .racing-car {
+            position: absolute;
+            top: 50%;
+            left: -48px;
+            transform: translateY(-50%);
+            font-size: 2em;
+            animation: drive 3s linear infinite;
+        }
+
+        @keyframes drive {
+            0% { left: -48px; }
+            100% { left: calc(100% + 48px); }
+        }
+
+        .progress-dots {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 30px;
+        }
+
+        .dot {
+            width: 12px;
+            height: 12px;
+            background: #ddd;
+            border-radius: 50%;
+            animation: bounce 1.4s ease-in-out infinite both;
+        }
+
+        .dot:nth-child(1) { animation-delay: -0.32s; }
+        .dot:nth-child(2) { animation-delay: -0.16s; }
+        .dot:nth-child(3) { animation-delay: 0s; }
+
+        @keyframes bounce {
+            0%, 80%, 100% {
+                transform: scale(0);
+                background: #ddd;
+            }
+            40% {
+                transform: scale(1);
+                background: #ff1e1e;
+            }
+        }
+
+        .schedule-icon {
+            font-size: 4em;
+            margin-bottom: 20px;
+            opacity: 0.7;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="thinking-container">
+            <div class="schedule-icon">📅</div>
+            <h1>🏁 Generating Your Study Schedule</h1>
+            
+            <div id="status" class="status-text">🧠 Analyzing your topic ratings...</div>
+            
+            <div class="racing-track">
+                <div class="racing-car">🏎️</div>
+            </div>
+            
+            <div class="progress-dots">
+                <div class="dot"></div>
+                <div class="dot"></div>
+                <div class="dot"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const statusElement = document.getElementById('status');
+        const racingCar = document.querySelector('.racing-car');
+        
+        const statusMessages = [
+            "🧠 Analyzing your topic ratings...",
+            "📊 Calculating optimal study times...",  
+            "📅 Scheduling around due dates...",
+            "⚡ Optimizing for maximum retention...",
+            "🎯 Finalizing your personalized plan..."
+        ];
+        
+        let currentStatusIndex = 0;
+        
+        function updateStatus() {
+            currentStatusIndex = (currentStatusIndex + 1) % statusMessages.length;
+            statusElement.textContent = statusMessages[currentStatusIndex];
+        }
+        
+        const statusTimer = setInterval(updateStatus, 2000);
+        
+        // Start processing immediately
+        fetch("{{ url_for('get_timeblock_results') }}")
+            .then(response => response.text())
+            .then(html => {
+                // Clear the status timer
+                clearInterval(statusTimer);
+                
+                // Show completion message
+                statusElement.textContent = "🏁 Schedule ready! Redirecting...";
+
+                racingCar.style.animation = 'none';
+                racingCar.style.transition = 'left 1.5s ease-in';
+                racingCar.style.left = 'calc(100% + 48px)';
+                
+                // Wait a moment then redirect
+                setTimeout(() => {
+                    window.location.href = "{{ url_for('get_timeblock_results') }}";
+                }, 1000);
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                statusElement.textContent = "❌ Something went wrong. Redirecting...";
+
+                racingCar.style.animation = 'none';
+                racingCar.style.transition = 'left 1.5s ease-in';
+                racingCar.style.left = '400px';
+
+                setTimeout(() => {
+                    window.location.href = "{{ url_for('get_timeblock_results') }}";
+                }, 2000);
+            });
+    </script>
+</body>
+</html>
