@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>PitStop - Study Schedule</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        .schedule-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .schedule-title {
+            color: #ff1e1e;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2.2em;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .schedule-subtitle {
+            text-align: center;
+            color: #666;
+            font-size: 1.2em;
+            margin-bottom: 40px;
+        }
+
+        .timeslot-grid {
+            display: grid;
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+
+        .timeslot-card {
+            background: #ffffff;
+            border: 2px solid #ff1e1e;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 4px 12px rgba(255, 30, 30, 0.1);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .timeslot-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(255, 30, 30, 0.15);
+        }
+
+        .timeslot-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .timeslot-date {
+            font-size: 1.3em;
+            font-weight: 700;
+            color: #333;
+        }
+
+        .timeslot-time {
+            background: #ff1e1e;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 1em;
+        }
+
+        .timeslot-topics {
+            margin-top: 15px;
+        }
+
+        .topics-label {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 8px;
+            display: block;
+        }
+
+        .topic-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .topic-tag {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            padding: 6px 12px;
+            border-radius: 15px;
+            font-size: 0.9em;
+            font-weight: 500;
+            color: #495057;
+        }
+
+        .duration-info {
+            margin-top: 10px;
+            font-size: 0.9em;
+            color: #666;
+            font-style: italic;
+        }
+
+        .no-timeslots {
+            text-align: center;
+            padding: 60px 20px;
+            color: #666;
+        }
+
+        .no-timeslots-icon {
+            font-size: 4em;
+            margin-bottom: 20px;
+            opacity: 0.7;
+        }
+
+        .schedule-summary {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        .summary-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .stat-item {
+            padding: 10px;
+        }
+
+        .stat-number {
+            font-size: 1.4em;
+            font-weight: 700;
+            color: #ff1e1e;
+        }
+
+        .stat-label {
+            font-size: 0.9em;
+            color: #666;
+            margin-top: 5px;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            margin-top: 40px;
+        }
+
+        .btn {
+            padding: 15px 30px;
+            border: none;
+            border-radius: 25px;
+            font-weight: 600;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 1em;
+        }
+
+        .btn-primary {
+            background: #ff1e1e;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #e01717;
+            transform: translateY(-1px);
+        }
+
+        .btn-secondary {
+            background: #f8f9fa;
+            color: #495057;
+            border: 2px solid #dee2e6;
+        }
+
+        .btn-secondary:hover {
+            background: #e9ecef;
+            border-color: #adb5bd;
+        }
+
+        @media (max-width: 768px) {
+            .timeslot-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
+            }
+
+            .action-buttons {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .summary-stats {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container schedule-container">
+        <h1 class="schedule-title">🏁 Your Study Schedule</h1>
+        <p class="schedule-subtitle">Optimized study plan ready for action!</p>
+
+        {% if schedule and schedule.study_sessions %}
+            <!-- Schedule Summary -->
+            <div class="schedule-summary">
+                <h3>📊 Schedule Overview</h3>
+                <div class="summary-stats">
+                    <div class="stat-item">
+                        <div class="stat-number">{{ schedule.study_sessions|length }}</div>
+                        <div class="stat-label">Study Sessions</div>
+                    </div>
+                    <div class="stat-item">
+                        {% set all_topics = schedule.study_sessions|selectattr('topics')|map(attribute='topics')|sum(start=[])|list %}
+                        <div class="stat-number">{{ all_topics|unique|list|length }}</div>
+                        <div class="stat-label">Topics Covered</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Study Sessions -->
+            <div class="timeslot-grid">
+                {% for session in schedule.study_sessions %}
+                <div class="timeslot-card">
+                    <div class="timeslot-header">
+                        <div class="timeslot-date">
+                            📅 {{ session.date }}
+                        </div>
+                        <div class="timeslot-time">
+                            ⏰ {{ session.start_time }} - {{ session.end_time }}
+                        </div>
+                    </div>
+                    
+                    {% if session.topics %}
+                    <div class="timeslot-topics">
+                        <span class="topics-label">Study Topics:</span>
+                        <div class="topic-tags">
+                            {% for topic in session.topics %}
+                            <span class="topic-tag">{{ topic }}</span>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="no-timeslots">
+                <div class="no-timeslots-icon">📚</div>
+                <h3>No Study Schedule Available</h3>
+                <p>Unable to generate your study schedule. Please try generating it again.</p>
+            </div>
+        {% endif %}
+
+        <!-- Action Buttons -->
+        <div class="action-buttons">
+            <a href="{{ url_for('sync_calendar_time') }}" class="btn btn-primary">
+                📅 Sync to Google Calendar
+            </a>
+            <a href="{{ url_for('index') }}" class="btn btn-secondary">
+                🏠 Return to Home
+            </a>
+        </div>
+    </div>
+</body>
+</html>

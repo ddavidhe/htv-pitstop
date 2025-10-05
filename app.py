@@ -129,14 +129,18 @@ def oauth2callback():
         'scopes': credentials.scopes
     }
 
-    if session.get('redirect_after_auth') == 'sync_calendar':
+    redirect_route = session.get('redirect_after_auth')
+    if redirect_route == 'sync_calendar':
         session.pop('redirect_after_auth', None)
         return redirect(url_for('sync_calendar'))
-    elif session.get('redirect_after_auth') == 'sync_calendar_timeblock':
+    elif redirect_route == 'sync_calendar_timeblock':
         session.pop('redirect_after_auth', None)
         return redirect(url_for('sync_calendar_timeblock'))
-
-    return redirect(url_for('index'))
+    elif redirect_route == 'sync_calendar_time':
+        session.pop('redirect_after_auth', None)
+        return redirect(url_for('sync_calendar_time'))
+    else:
+        return redirect(url_for('index'))
 
 
 @app.route("/sync_calendar")
@@ -201,7 +205,7 @@ def sync_calendar():
         assignment_count += 1
     
     print(f"Inserted {assignment_count} assignments into calendar.")
-    return render_template("success.html", count=assignment_count)
+    return render_template("success.html", count=assignment_count, type="assignments")
 
 @app.route("/swipe_topics")
 def swipe_topics():
@@ -240,164 +244,50 @@ def swipe_result():
     session["swipe_data"] = swipe_data
     return {"status": "success"}
 
-
 @app.route("/timeblock")
 def timeblock():
     pdf_json = session.get("last_pdf_json")
-    swipe_results = session.get("swipe_data")
+    swipe_results = session.get("swipe_data", [])
 
     if not pdf_json or not swipe_results:
-        # need both, i'll make an error page
         return redirect(url_for('index'))
     
     try:
-        study_schedule = generate_study_schedule(pdf_json, swipe_results)
-        session["study_schedule"] = study_schedule
-        return render_template("timeblock.html", schedule=study_schedule)
+        with open('sample_times.json', "r") as f:
+            study_schedule = json.load(f)  # ← Load as JSON object
+        session["study_schedule"] = json.dumps(study_schedule)
+    
+        return render_template("result_time.html", schedule=study_schedule)  # ← Pass as object
+
     except Exception as e:
-        print(f"Error generating study schedule: {e}")
-        return render_template("index.html", error="Failed to generate study schedule. Please try again.")
+        print(f"Error loading study schedule: {e}")
+        return render_template("index.html", message="Failed to load study schedule.")
 
-def generate_study_schedule(pdf_json, swipe_results):
-    output_json = json.loads(pdf_json)
-    topics_rating = {item['topic']: item['rating'] for item in swipe_results}
-
-    # Prepare the prompt
-    prompt = (
-        
-        "Based on this assignment data and a student's self-assessment ratings, create an optimal study schedule.\n\n"
-        "ASSIGNMENTS:\n\n"
-        f"{json.dumps(output_json.get('assignments', []), indent=2)}\n\n"
-        "STUDENT RATINGS:\n\n"
-        f"{json.dumps(topics_rating, indent=2)}\n\n"
-        "GUIDELINES:\n"
-        "Only scheudle study sessions between 9AM and 9PM.\n\n"
-        "Schedule at most 3 hours for weekdays (mon-fri) and 5 hours for weekends (sat-sun).\n\n"
-        "Prioritze topics with lower ratings (0 = weak, 0.5 = soso, 1 = familiar). Allocate most time for 0 and some time for 0.5, it's ok to not have any time for things ranked 1.\n\n"
-        "Distribute study sessions according to incoming due dates. Schedule greedily\n\n"
-        "Schedule topics BEFORE their weekly_topics dates, and spread sessions across multiple days for more retention.\n\n"
-        "In general try to give topics with 0 about 3 hours a week, and 0.5 about 2 hours a week.\n\n"
-        "Return a JSON with this structure and NO OTHER TEXT:\n"
-        """{
-            "study_sessions": [
-                {
-                    "date": "YYYY-MM-DD",
-                    "start_time": "HH:MM",
-                    "end_time": "HH:MM",
-                    "topics": ["Topic 1", "Topic 2"]
-                }
-            ]
-            }
-        """
-        "Follow this JSON format religiously, do not add any extra text outside the JSON. Ensure dates and times are in the correct format.\n\n"
-    )
-
-    response = client.chat.completions.create(
-        model="gpt-4",
-        messages=[
-            {"role": "system", "content": "You are an expert study schedule optimizer that creates personalized learning plans."},
-            {"role": "user", "content": prompt}
-        ]
-    )
-    schedule_json = response.choices[0].message.content
-    print(f"Raw OpenAI Output JSON: {schedule_json}")
-    return json.loads(schedule_json)
-
-# @app.route("/sync_calendar_timeblock")
-# def sync_calendar_timeblock():
-#     if 'credentials' not in session:
-#         session['redirect_after_auth'] = 'sync_calendar_timeblock'
-#         return redirect(url_for('authorize'))
-    
-#     creds = Credentials(**session['credentials'])
-#     service = build('calendar', 'v3', credentials=creds)
-
-#     study_schedule = session.get("study_schedule")
-#     if not study_schedule:
-#         return "No schedule"
-
-#     calendar_id = None
-#     calendar_name = "a"
-
-#     try:
-#         calendar_list = service.calendarList().list().execute()
-#         for calendar in calendar_list.get('items', []):
-#             if calendar.get('summary') == calendar_name:
-#                 calendar_id = calendar.get('id')
-#                 print(f"Found existing calendar with ID: {calendar_id}")
-#                 break
-#     except Exception as e:
-#         print(f"Error fetching calendar list: {e}")
-    
-#     if not calendar_id:
-#         # get the course code :)
-#         pdf_json = session.get("last_pdf_json")
-#         if pdf_json:
-#             output_json = json.loads(pdf_json)
-#             course_code = output_json.get("course_code", "PitStop Assignments")
-    
-#     calendar_body = {
-#             'summary': f'{course_code} - PitStop Study Schedule',
-#             'description': 'Study schedule imported from PitStop',
-#             'timeZone': 'America/Los_Angeles'
-#     }
-
-#     try:
-#         created_calendar = service.calendars().insert(body=calendar_body).execute()
-#         calendar_id = created_calendar['id']
-#         print(f"Created new calendar with ID: {calendar_id}")
-#     except Exception as e:
-#         print(f"Error creating calendar: {e}")
-#         return "Failed to create calendar."
-
-#     # populate
-#     session_count = 0
-
-#     for study_session in study_schedule.get("study_sessions", []):
-#         start_datetime = f"{study_session['date']}T{study_session['start_time']}:00"
-#         end_datetime = f"{study_session['date']}T{study_session['end_time']}:00"
-#         topics_str = ", ".join(study_session.get("topics", []))
-
-#         event = {
-#             "summary": f"Study: {topics_str}",
-#             "start": {"dateTime": start_datetime, "timeZone": "America/Los_Angeles"},
-#             "end": {"dateTime": end_datetime, "timeZone": "America/Los_Angeles"},
-#         }
-#         try: 
-#             service.events().insert(calendarId=calendar_id, body=event).execute()
-#             session_count += 1
-#         except Exception as e:
-#             print(f"Error inserting event: {e}")
-    
-#     print(f"Inserted {session_count} study sessions into calendar.")
-#     return render_template("success.html", count=session_count)
-
-@app.route("/sync_calendar_timeblock")
-def sync_calendar_timeblock():
-
+@app.route("/sync_calendar_time")
+def sync_calendar_time():
     if 'credentials' not in session:
-        session['redirect_after_auth'] = 'sync_calendar_timeblock'
+        session['redirect_after_auth'] = 'sync_calendar_time'
         return redirect(url_for('authorize'))
     
     creds = Credentials(**session['credentials'])
     service = build('calendar', 'v3', credentials=creds)
 
-    # Use sample data instead of generated schedule
-    try:
-        with open('sample_times.json', 'r') as f:
-            study_schedule = json.loads(f.read())
-    except FileNotFoundError:
-        return "Sample times file not found. Please create sample_times.json"
-    except json.JSONDecodeError:
-        return "Invalid JSON in sample_times.json file"
+    # Get study schedule from session
+    study_schedule_json = session.get("study_schedule")
+    if not study_schedule_json:
+        return "No study schedule to sync. Please generate a timeblock schedule first."
+    
+    # Parse the schedule (it's stored as JSON string)
+    study_schedule = json.loads(study_schedule_json)
 
+    # Find or create the same calendar as assignments
     calendar_id = None
-    calendar_name = "a"
-
+    calendar_name = 'PitStop Assignments'
+    
     try:
         calendar_list = service.calendarList().list().execute()
         for calendar in calendar_list.get('items', []):
-            if calendar.get('summary') == calendar_name:
+            if calendar_name in calendar.get('summary', ''):
                 calendar_id = calendar.get('id')
                 print(f"Found existing calendar with ID: {calendar_id}")
                 break
@@ -405,17 +295,17 @@ def sync_calendar_timeblock():
         print(f"Error fetching calendar list: {e}")
     
     if not calendar_id:
-        # get the course code :)
+        # Create calendar if it doesn't exist
         pdf_json = session.get("last_pdf_json")
         if pdf_json:
             output_json = json.loads(pdf_json)
-            course_code = output_json.get("course_code", "PitStop Assignments")
+            course_code = output_json.get("course_code", "PitStop")
         else:
             course_code = "PitStop"
-    
+        
         calendar_body = {
-            'summary': f'{course_code} - PitStop Study Schedule',
-            'description': 'Study schedule imported from PitStop',
+            'summary': f'{course_code} - PitStop Assignments',
+            'description': 'Study schedule and assignments from PitStop',
             'timeZone': 'America/Los_Angeles'
         }
 
@@ -427,9 +317,9 @@ def sync_calendar_timeblock():
             print(f"Error creating calendar: {e}")
             return "Failed to create calendar."
 
-    # populate
+    # Add study sessions to calendar
     session_count = 0
-
+    
     for study_session in study_schedule.get("study_sessions", []):
         start_datetime = f"{study_session['date']}T{study_session['start_time']}:00"
         end_datetime = f"{study_session['date']}T{study_session['end_time']}:00"
@@ -437,19 +327,20 @@ def sync_calendar_timeblock():
 
         event = {
             "summary": f"Study: {topics_str}",
+            "description": f"PitStop study session for: {topics_str}",
             "start": {"dateTime": start_datetime, "timeZone": "America/Los_Angeles"},
             "end": {"dateTime": end_datetime, "timeZone": "America/Los_Angeles"},
         }
+        
         try: 
             service.events().insert(calendarId=calendar_id, body=event).execute()
             session_count += 1
+            print(f"Added study session: {topics_str} on {study_session['date']}")
         except Exception as e:
-            print(f"Error inserting event: {e}")
+            print(f"Error inserting study session: {e}")
     
     print(f"Inserted {session_count} study sessions into calendar.")
-    return render_template("success.html", count=session_count)
-
-
+    return render_template("success.html", count=session_count, type="study sessions")
 
 if __name__ == "__main__":
     os.makedirs("uploads", exist_ok=True)

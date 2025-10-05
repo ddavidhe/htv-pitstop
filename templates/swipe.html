@@ -4,6 +4,50 @@
     <title>PitStop - Swipe Topics</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='swipe.css') }}">
+    <style>
+        .success-icon {
+            font-size: 4em;
+            color: #28a745;
+            text-align: center;
+            margin-bottom: 20px;
+            animation: checkmark-bounce 0.6s ease-in-out;
+        }
+
+        .completion-message {
+            text-align: center;
+            color: #666;
+            margin-bottom: 20px;
+            font-size: 1.1em;
+        }
+
+        .completed {
+            text-align: center;
+            padding: 40px 20px;
+        }
+
+        .completed h2 {
+            color: #ff1e1e;
+            margin-bottom: 15px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        @keyframes checkmark-bounce {
+            0% {
+                transform: scale(0);
+                opacity: 0;
+            }
+            50% {
+                transform: scale(1.2);
+                opacity: 0.8;
+            }
+            100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+    </style>
 </head>
 <body>
     <div class="container swipe-container">
@@ -37,7 +81,8 @@
         </div>
         
         <div id="completed" class="completed" style="display: none;">
-            <h2>Great! We've got your preferences</h2>
+            <div class="success-icon">✅</div>
+            <h2>Topic ratings have been saved!</h2>
             <a href="/" class="upload-btn">Back to Home</a>
         </div>
     </div>

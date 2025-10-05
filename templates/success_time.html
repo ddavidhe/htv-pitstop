@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>PitStop - Schedule Sync Complete</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        .success-icon {
+            font-size: 4em;
+            color: #28a745;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .success-title {
+            color: #ff1e1e;
+            text-align: center;
+            margin-bottom: 20px;
+            font-size: 2.2em;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .success-message {
+            text-align: center;
+            font-size: 1.2em;
+            color: #333;
+            margin-bottom: 40px;
+            line-height: 1.5;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            margin-top: 30px;
+        }
+
+        .btn {
+            padding: 15px 30px;
+            border: none;
+            border-radius: 25px;
+            font-weight: 600;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 1em;
+        }
+
+        .upload-btn {
+            background: #ff1e1e;
+            color: white;
+        }
+
+        .upload-btn:hover {
+            background: #e01717;
+            transform: translateY(-1px);
+        }
+
+        .secondary-btn {
+            background: #f8f9fa;
+            color: #495057;
+            border: 2px solid #dee2e6;
+        }
+
+        .secondary-btn:hover {
+            background: #e9ecef;
+            border-color: #adb5bd;
+        }
+
+        .schedule-stats {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 20px;
+            margin: 30px 0;
+            text-align: center;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .stat-item {
+            padding: 10px;
+        }
+
+        .stat-number {
+            font-size: 1.4em;
+            font-weight: 700;
+            color: #ff1e1e;
+        }
+
+        .stat-label {
+            font-size: 0.9em;
+            color: #666;
+            margin-top: 5px;
+        }
+
+        @media (max-width: 768px) {
+            .action-buttons {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="success-icon">🏁</div>
+        <h1 class="success-title">Study Schedule Synced!</h1>
+        <p class="success-message">
+            {{ count }} study sessions were successfully added to your Google Calendar.<br>
+            Your personalized study plan is now ready to keep you on track!
+        </p>
+
+        {% if type %}
+        <div class="schedule-stats">
+            <h3>📊 Sync Summary</h3>
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <div class="stat-number">{{ count }}</div>
+                    <div class="stat-label">{{ type|title }}</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number">📅</div>
+                    <div class="stat-label">Calendar Ready</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number">⏰</div>
+                    <div class="stat-label">Timed Sessions</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number">🎯</div>
+                    <div class="stat-label">Optimized Plan</div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+        
+        <div class="action-buttons">
+            <a href="{{ url_for('index') }}" class="secondary-btn">🏠 Return to Home</a>
+            <a href="https://calendar.google.com" target="_blank" class="upload-btn">📅 View Google Calendar</a>
+        </div>
+    </div>
+</body>
+</html>
