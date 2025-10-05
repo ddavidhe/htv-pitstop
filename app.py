@@ -51,49 +51,49 @@ def index():
     
     return render_template("index.html")
 
-# # the fake route
-@app.route("/get_results")
-def get_results():
-    """This route actually processes the PDF and returns results"""
-    pdf_path = session.get("uploaded_pdf_path")
-    if not pdf_path:
-        return redirect(url_for('index'))
-    
-    # For demo, use sample JSON (replace with real OpenAI call)
-    with open('sample2.json', "r") as f:
-        result = f.read()
-    session["last_pdf_json"] = result
-    
-    return render_template("result.html", output=result)
-
-# Uncomment this when you want to use real OpenAI processing:
-# @app.route("/get_results")  
+# # # the fake route
+# @app.route("/get_results")
 # def get_results():
+#     """This route actually processes the PDF and returns results"""
 #     pdf_path = session.get("uploaded_pdf_path")
 #     if not pdf_path:
 #         return redirect(url_for('index'))
     
-#     pdf_text = extract_text(pdf_path)
-    
-#     prompt = (
-#         "Extract the course name, course code, all assignment names with due dates, "
-#         "and weekly topics clearly as JSON with fields: course_name, course_code, assignments, weekly_topics.\n\n"
-#         "for assignments, you MUST only have 2 things per entry, name and due_date. Ensure that the due_date field is in form of Sep 29 or Nov 25 where month is the first 3 letters of the month.\n\n"
-#         "for weekly topics, you MUST have 2 things per entry. range (with dates in the form of Jun 15 or Feb 11) and topics, which will be 1 string with commas to deliminate. if multiple dates exist in the range, seperate via dash like Oct 20 - Oct 25.\n\n"
-#         "you do NOT need to include the final exam or the midterm if there is no date listed.\n\n"
-#         f"{pdf_text}"
-#     )
-
-#     response = client.chat.completions.create(
-#         model="gpt-4",
-#         messages=[
-#             {"role": "system", "content": "You are an assistant that extracts course details."},
-#             {"role": "user", "content": prompt}
-#         ]
-#     )
-#     result = response.choices[0].message.content
+#     # For demo, use sample JSON (replace with real OpenAI call)
+#     with open('sample2.json', "r") as f:
+#         result = f.read()
 #     session["last_pdf_json"] = result
+    
 #     return render_template("result.html", output=result)
+
+# Uncomment this when you want to use real OpenAI processing:
+@app.route("/get_results")  
+def get_results():
+    pdf_path = session.get("uploaded_pdf_path")
+    if not pdf_path:
+        return redirect(url_for('index'))
+    
+    pdf_text = extract_text(pdf_path)
+    
+    prompt = (
+        "Extract the course name, course code, all assignment names with due dates, "
+        "and weekly topics clearly as JSON with fields: course_name, course_code, assignments, weekly_topics.\n\n"
+        "for assignments, you MUST only have 2 things per entry, name and due_date. Ensure that the due_date field is in form of Sep 29 or Nov 25 where month is the first 3 letters of the month.\n\n"
+        "for weekly topics, you MUST have 2 things per entry. range (with dates in the form of Jun 15 or Feb 11) and topics, which will be 1 string with commas to deliminate. if multiple dates exist in the range, seperate via dash like Oct 20 - Oct 25.\n\n"
+        "you do NOT need to include the final exam or the midterm if there is no date listed.\n\n"
+        f"{pdf_text}"
+    )
+
+    response = client.chat.completions.create(
+        model="gpt-4",
+        messages=[
+            {"role": "system", "content": "You are an assistant that extracts course details."},
+            {"role": "user", "content": prompt}
+        ]
+    )
+    result = response.choices[0].message.content
+    session["last_pdf_json"] = result
+    return render_template("result.html", output=result)
 
 
 @app.route("/authorize")
@@ -233,7 +233,6 @@ def swipe_topics():
 @app.route("/swipe_result", methods=["POST"])
 def swipe_result():
     swipe_data = request.get_json()
-    print("Swipe result: ", swipe_data)
 
     # Map ratings to numerical values
     rating_map = {'soso': 0.5, 'familiar': 1, 'weak': 0}
@@ -244,24 +243,84 @@ def swipe_result():
     session["swipe_data"] = swipe_data
     return {"status": "success"}
 
+# # # This route is the sample one.
+# @app.route("/timeblock")
+# def timeblock():
+#     pdf_json = session.get("last_pdf_json")
+#     swipe_results = session.get("swipe_data", [])
+
+#     if not pdf_json or not swipe_results:
+#         return redirect(url_for('index'))
+    
+#     try:
+#         with open('sample_times.json', "r") as f:
+#             study_schedule = json.load(f)  # ← Load as JSON object
+#         session["study_schedule"] = json.dumps(study_schedule)
+    
+#         return render_template("result_time.html", schedule=study_schedule)  # ← Pass as object
+
+#     except Exception as e:
+#         print(f"Error loading study schedule: {e}")
+#         return render_template("index.html", message="Failed to load study schedule.")
+    
 @app.route("/timeblock")
 def timeblock():
-    pdf_json = session.get("last_pdf_json")
-    swipe_results = session.get("swipe_data", [])
+    output_json = session.get("last_pdf_json")
+    output_json = json.loads(output_json) if output_json else None
+    topics_rating = session.get("swipe_data", [])
 
-    if not pdf_json or not swipe_results:
+    if not output_json or not topics_rating:
         return redirect(url_for('index'))
     
+    prompt = (
+        
+        "Based on this assignment data and a student's self-assessment ratings, create an optimal study schedule.\n\n"
+        "ASSIGNMENTS:\n\n"
+        f"{json.dumps(output_json.get('assignments', []), indent=2)}\n\n"
+        "STUDENT RATINGS:\n\n"
+        f"{json.dumps(topics_rating, indent=2)}\n\n"
+        "GUIDELINES:\n"
+        "Only scheudle study sessions between 9AM and 9PM.\n\n"
+        "Schedule at most 3 hours for weekdays (mon-fri) and 5 hours for weekends (sat-sun).\n\n"
+        "Prioritze topics with lower ratings (0 = weak, 0.5 = soso, 1 = familiar). Allocate most time for 0 and some time for 0.5, it's ok to not have any time for things ranked 1.\n\n"
+        "Distribute study sessions according to incoming due dates. Schedule greedily\n\n"
+        "Schedule topics BEFORE their weekly_topics dates, and spread sessions across multiple days for more retention.\n\n"
+        "In general try to give topics with 0 about 3 hours a week, and 0.5 about 2 hours a week.\n\n"
+        "Return a JSON with this structure and NO OTHER TEXT:\n"
+        """{
+            "study_sessions": [
+                {
+                    "date": "YYYY-MM-DD",
+                    "start_time": "HH:MM",
+                    "end_time": "HH:MM",
+                    "topics": ["Topic 1", "Topic 2"]
+                }
+            ]
+            }
+        """
+        "Follow this JSON format religiously, do not add any extra text outside the JSON. Ensure dates and times are in the correct format.\n\n"
+    )
+
+    response = client.chat.completions.create(
+        model="gpt-4",
+        messages=[
+            {"role": "system", "content": "You are an assistant that creates study schedules."},
+            {"role": "user", "content": prompt}
+        ]
+    )
+    result = response.choices[0].message.content
+    print("Study Schedule JSON: ", result)
+
     try:
-        with open('sample_times.json', "r") as f:
-            study_schedule = json.load(f)  # ← Load as JSON object
+        study_schedule = json.loads(result)  # ← Load as JSON object
         session["study_schedule"] = json.dumps(study_schedule)
     
         return render_template("result_time.html", schedule=study_schedule)  # ← Pass as object
 
     except Exception as e:
-        print(f"Error loading study schedule: {e}")
-        return render_template("index.html", message="Failed to load study schedule.")
+        print(f"Error parsing study schedule: {e}")
+        return render_template("index.html", message="Failed to parse study schedule.")
+
 
 @app.route("/sync_calendar_time")
 def sync_calendar_time():
